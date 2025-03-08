@@ -20,6 +20,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
+import java.nio.channels.ClosedChannelException;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -84,20 +85,21 @@ public class CustomHttpServer {
      * Dispatches requests to the appropriate route handler based on the registered routes.
      */
     private void dispatch(HttpExchange exchange) throws IOException {
-        String requestPath = exchange.getRequestURI().getPath();
-        RouteHandler targetHandler = findTargetHandler(exchange, requestPath);
-
-        if (targetHandler == null) {
-            exchange.sendResponseHeaders(404, -1);
-            return;
-        }
-
         try {
+            String requestPath = exchange.getRequestURI().getPath();
+            RouteHandler targetHandler = findTargetHandler(exchange, requestPath);
+
+            if (targetHandler == null) {
+                exchange.sendResponseHeaders(404, -1);
+                return;
+            }
+
             invokeHandler(exchange, targetHandler);
-        } catch (Exception e) {
-            log.severe("Error in request dispatching: " + e.getMessage());
-            sendInternalServerError(exchange);
+        } finally {
+
         }
+
+
     }
 
     /**
@@ -135,6 +137,9 @@ public class CustomHttpServer {
         } catch (IllegalArgumentException e) {
             log.severe("Parameter process failed." + e.getMessage());
             HttpUtils.sendResponse(exchange, 400);
+        } catch (IOException e) {
+            log.severe("io exception occurred:" + e);
+            throw e;
         } catch (Exception e) {
             log.severe("General error in handler invocation: " + e.getMessage());
             sendInternalServerError(exchange);
