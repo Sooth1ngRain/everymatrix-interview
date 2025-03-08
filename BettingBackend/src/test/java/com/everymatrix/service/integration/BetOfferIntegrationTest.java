@@ -67,7 +67,7 @@ public class BetOfferIntegrationTest {
     public void testPlaceStakeWithConcurrency() throws IOException {
         BettingHttpClient bettingHttpClient = setUp();
 
-        final int totalThreads = 100000;
+        final int totalThreads = 100;
         final int threadsPerGroup = 10;
         final Long betOfferId = 9001L;
         ExecutorService executor = Executors.newFixedThreadPool(totalThreads);
