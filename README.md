@@ -1,6 +1,8 @@
 # Run the code
-Execute run.cmd , configuration can be set through appconfig.properties
+Execute run.cmd 
 `java -jar bettingstake.jar`
+
+Configuration can be set through appconfig.properties
 
 # Requirement analysis
 
