@@ -1,3 +1,7 @@
+# Run the code
+Execute run.cmd , configuration can be set through appconfig.properties
+`java -jar bettingstake.jar`
+
 # Requirement analysis
 
 ## HttpServer
