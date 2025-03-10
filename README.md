@@ -74,7 +74,7 @@ com.everymatrix.service.BetOfferService
 # Performance Testing
 
 ## Test Case
-200 Thread simulate 100 customerId(customerId = ThreadNumber % 100) , get session and post random stake (1-10000) , Loop 10000 times in 10 minutes.
+200 Thread simulate 100 customerId(customerId = ThreadNumber % 100) , get session and post random stake (1-10000) on one particular bet-offer-id, Loop 10000 times in 10 minutes.
 
 script: ./Test Plan.jmx
 ## Test Result
