@@ -21,6 +21,11 @@ public class RouteHandler {
         this.controller = controller;
     }
 
+    /**
+     * Resolve the path variables in giving uri from this route handler
+     * @param uri
+     * @return
+     */
     public Map<String, String> getPathVariables(URI uri) {
         Map<String, String> pathVariables = new HashMap<>();
 
@@ -48,8 +53,10 @@ public class RouteHandler {
         return Pattern.compile(this.getPathRegex());
     }
 
+    /**
+     * Extract variable names enclosed in {}
+     */
     private String[] extractVariableNames(String path) {
-        // Extract variable names enclosed in {}
         Pattern pattern = Pattern.compile("\\{([^/}]+)\\}");
         Matcher matcher = pattern.matcher(path);
 
