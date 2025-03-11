@@ -29,7 +29,7 @@ public class SessionManagerTest {
 
     @Test
     public void testGetNewSession() {
-        Long customerId = 12345L;
+        int customerId = 12345;
         String sessionKey = sessionManager.getNewSession(customerId);
         assertNotNull(sessionKey);
         Session session = sessionManager.accessSession(sessionKey);
@@ -39,14 +39,14 @@ public class SessionManagerTest {
 
     @Test
     public void testAccessSessionBeforeExpiry() {
-        Long customerId = 12345L;
+        int customerId = 12345;
         String sessionKey = sessionManager.getNewSession(customerId);
         assertDoesNotThrow(() -> sessionManager.accessSession(sessionKey));
     }
 
     @Test
     public void testAccessSessionAfterExpiry() throws InterruptedException {
-        Long customerId = 12345L;
+        int customerId = 12345;
         String sessionKey = sessionManager.getNewSession(customerId);
 
         TimeUnit.MILLISECONDS.sleep(EXPIRATION_TIME + 100);
@@ -56,7 +56,7 @@ public class SessionManagerTest {
 
     @Test
     public void testPurgeExpiredSessions() throws InterruptedException {
-        Long customerId = 12345L;
+        int customerId = 12345;
         String sessionKey = sessionManager.getNewSession(customerId);
 
         TimeUnit.MILLISECONDS.sleep(EXPIRATION_TIME + 100);
@@ -67,7 +67,7 @@ public class SessionManagerTest {
 
     @Test
     public void testSlidingExpiration() throws InterruptedException {
-        Long customerId = 12345L;
+        int customerId = 12345;
         String sessionKey = sessionManager.getNewSession(customerId);
 
         for (int i = 0; i < 3; i++) {

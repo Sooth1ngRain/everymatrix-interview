@@ -31,7 +31,7 @@ public class SessionManager {
      *
      * @return A unique session key.
      */
-    public String getNewSession(Long customerId) {
+    public String getNewSession(Integer customerId) {
         if(customerId == null){
             throw new IllegalArgumentException("customerId should not be null");
         }

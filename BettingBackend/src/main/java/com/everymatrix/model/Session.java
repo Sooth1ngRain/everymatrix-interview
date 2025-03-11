@@ -4,13 +4,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Session {
     private final String sessionKey;
-    private final long customerId;
+    private final int customerId;
     private final long expiredMilliseconds;
     private long latestAccessTime;
 
     private boolean deleted = false;
 
-    public Session(String sessionKey, long customerId, long expiredMilliseconds) {
+    public Session(String sessionKey, int customerId, long expiredMilliseconds) {
         this.sessionKey = sessionKey;
         this.customerId = customerId;
         this.expiredMilliseconds = expiredMilliseconds;
@@ -21,7 +21,7 @@ public class Session {
         return sessionKey;
     }
 
-    public long getCustomerId() {
+    public int getCustomerId() {
         return customerId;
     }
 

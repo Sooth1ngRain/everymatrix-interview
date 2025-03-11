@@ -6,26 +6,25 @@ import java.util.stream.Collectors;
 
 
 public class StakeEntry implements Comparable<StakeEntry> {
-    private final Long customerId;
-    private final Integer stake;
+    private final int customerId;
+    private final int stake;
 
-    public StakeEntry(Long customerId, Integer stake) {
+    public StakeEntry(int customerId, int stake) {
         this.customerId = customerId;
         this.stake = stake;
     }
 
-    public Long getCustomerId() {
+    public int getCustomerId() {
         return customerId;
     }
 
-    public Integer getStake() {
+    public int getStake() {
         return stake;
     }
 
     @Override
     public int compareTo(StakeEntry other) {
-        int stakeComparison = other.stake.compareTo(this.stake);
-        return (stakeComparison != 0) ? stakeComparison : this.customerId.compareTo(other.customerId);
+        return other.stake - this.stake;
     }
 
     @Override

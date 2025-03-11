@@ -23,10 +23,10 @@ public class BetOfferServiceTest {
 
     @Test
     public void testPlaceStakeAndQueryStakes() {
-        Long betOfferId1 = 1L;
-        Long betOfferId2 = 2L;
-        Long customerId1 = 1001L;
-        Long customerId2 = 1002L;
+        int betOfferId1 = 1;
+        int betOfferId2 = 2;
+        int customerId1 = 1001;
+        int customerId2 = 1002;
 
         betOfferService.placeStake(betOfferId1, customerId1, 100);
         betOfferService.placeStake(betOfferId1, customerId2, 300);
@@ -45,15 +45,15 @@ public class BetOfferServiceTest {
 
     @Test
     public void testQueryCustomerStakes() {
-        Long betOfferId1 = 1L;
-        Long betOfferId2 = 2L;
-        Long customerId1 = 1L;
+        int betOfferId1 = 1;
+        int betOfferId2 = 2;
+        int customerId1 = 1;
 
         betOfferService.placeStake(betOfferId1, customerId1, 100);
         betOfferService.placeStake(betOfferId1, customerId1, 200);
         betOfferService.placeStake(betOfferId2, customerId1, 300);
 
-        Map<Long, TreeSet<Integer>> customerStakes = betOfferService.queryBetOfferStakes(customerId1);
+        Map<Integer, TreeSet<Integer>> customerStakes = betOfferService.queryBetOfferStakes(customerId1);
 
         assertEquals(2, customerStakes.size());
         assertTrue(customerStakes.containsKey(betOfferId1));
@@ -72,7 +72,7 @@ public class BetOfferServiceTest {
 
     @Test
     public void testConcurrentPlaceStake() throws InterruptedException {
-        Long betOfferId = 1L;
+        Integer betOfferId = 1;
         int numberOfThreads = 100;
         ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
         CountDownLatch latch = new CountDownLatch(numberOfThreads);
@@ -81,7 +81,7 @@ public class BetOfferServiceTest {
             final int threadIndex = i;
             executorService.submit(() -> {
                 try {
-                    Long customerId = (long) threadIndex;
+                    Integer customerId = threadIndex;
                     Integer stakeAmount = 100 * (threadIndex + 1);
                     betOfferService.placeStake(betOfferId, customerId, stakeAmount);
                 } finally {

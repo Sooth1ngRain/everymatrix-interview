@@ -27,20 +27,20 @@ public class MainController {
     }
 
     @Route(path = "/{customerId}/session")
-    public String getSession(@PathVariable(value = "customerId", converter = LongParser.class) Long customerId) {
+    public String getSession(@PathVariable(value = "customerId", converter = IntegerParser.class) Integer customerId) {
         return sessionManager.getNewSession(customerId);
     }
 
     @Route(method = HttpMethod.POST, path = "/{betOfferId}/stake")
     public void placeStake(@RequestParam("sessionkey") String sessionKey,
                            @RequestBody(converter = IntegerParser.class) Integer stake,
-                           @PathVariable(value = "betOfferId", converter = LongParser.class) Long betOfferId) {
+                           @PathVariable(value = "betOfferId", converter = IntegerParser.class) Integer betOfferId) {
         Session session = sessionManager.accessSession(sessionKey);
         betOfferService.placeStake(betOfferId, session.getCustomerId(), stake);
     }
 
     @Route(path = "/{betOfferId}/highstakes")
-    public String queryHighStakes(@PathVariable(value = "betOfferId", converter = LongParser.class) Long betOfferId) {
+    public String queryHighStakes(@PathVariable(value = "betOfferId", converter = IntegerParser.class) Integer betOfferId) {
         List<StakeEntry> stakeEntries = betOfferService.queryStakes(betOfferId);
         return StakeEntry.convertToCSV(stakeEntries);
     }
