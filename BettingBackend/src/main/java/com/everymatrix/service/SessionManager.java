@@ -60,7 +60,7 @@ public class SessionManager {
     }
 
     private String createNewSession(int customerId) {
-        String sessionKey = UUID.randomUUID().toString();
+        String sessionKey = UUID.randomUUID().toString().replace("-", "");
         Session session = new Session(sessionKey, customerId, expiredMilliseconds);
         sessions.put(sessionKey, session);
         customIdIndex.put(customerId, sessionKey);
