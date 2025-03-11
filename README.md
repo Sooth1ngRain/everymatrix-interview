@@ -62,8 +62,8 @@ Persist Bet-Offer in memory with thread-safe code, and provide o(1) time-complex
 
 ### Query high stake with HighStakeCache
 
-- Data structure: Map<Long, TreeSet<StakeEntry>>  Key: betOfferId, Value: TreeSet of customerId-stake pairs
-- Upon posting a stake that triggers cache updates, insert the stake into TreeSet<StakeEntry> and pop the minimal stake if the customer-stake pair is not already in the cache, if it exists, update the StakeEntry.
+- Data structure: Map<Long, ConcurrentSkipListSet<StakeEntry>>  Key: betOfferId, Value: ConcurrentSkipListSet of customerId-stake pairs
+- Upon posting a stake that triggers cache updates, insert the stake into ConcurrentSkipListSet<StakeEntry> and pop the minimal stake if the customer-stake pair is not already in the cache, if it exists, update the StakeEntry.
 - In production ,this design should consider consistency after a long run, which is not implemented in this project.
 
 
