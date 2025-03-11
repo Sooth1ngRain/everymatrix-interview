@@ -12,9 +12,8 @@ Configuration can be set through appconfig.properties
 
 - Use com.sun.net.httpserver.HttpServer as a light-weighted server
 - Customize thread-pool with ThreadPoolExecutor and set pool size properly to handle massive simultaneous requests
-- Customize dispatch procedure inside http handler to support path variable. Cache for route handler metadata to
-  accelerate dispatch operations.
-- Implement annotation mimicking spring's @RequestMapping @Requestbody @Requestparam @PathVariable to simplify
+- Customize dispatch procedure inside http handler to support path variable.
+- Implement annotation @Route mimicking spring's @RequestMapping to simplify
   definition of controller route handler.
 
 ### Relevant configuration
@@ -35,9 +34,10 @@ Provide a sliding-refresh session manager
 ### Solution selection
 
 - Session expire strategy: lazy expire + schedule delete
-- Session field: sessionKey , customerId, deleted flag , latestAccessTime(If latestAccessTime + config[timeout] <
+- Session field: sessionKey , customerId, latestAccessTime(If latestAccessTime + config[timeout] <
   currentTime then session expired)
-- data structure: ConcurrentHashMap<sessionKey , SessionObject>
+- data structure: ConcurrentHashMap<sessionKey , SessionObject> for session store , and ConcurrentHashMap<customerId, sessionKey> for index by customerId
+- When getSession ,use ReentrantLock to ensure threadsafe in case of multiple thread on one customer returns different sessionkey
 
 ### Configuration Options
 
@@ -64,7 +64,6 @@ Persist Bet-Offer in memory with thread-safe code, and provide o(1) time-complex
 
 - Data structure: Map<Long, TreeSet<StakeEntry>>  Key: betOfferId, Value: TreeSet of customerId-stake pairs
 - Upon posting a stake that triggers cache updates, insert the stake into TreeSet<StakeEntry> and pop the minimal stake if the customer-stake pair is not already in the cache, if it exists, update the StakeEntry.
-- Use betOfferId to lock the procedure and guarantee thread-safe
 - In production ,this design should consider consistency after a long run, which is not implemented in this project.
 
 

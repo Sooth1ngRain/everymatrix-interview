@@ -1,6 +1,5 @@
 package com.everymatrix.service;
 
-import com.everymatrix.exception.SessionExpiredException;
 import com.everymatrix.exception.SessionInvalidException;
 import com.everymatrix.model.Session;
 
@@ -9,6 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A lazy-expiration and periodically checking session manager.
@@ -17,8 +18,12 @@ import java.util.concurrent.TimeUnit;
 public class SessionManager {
 
     private final ConcurrentHashMap<String, Session> sessions = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, String> customIdIndex = new ConcurrentHashMap<>();
     private final long expiredMilliseconds;
     private final ScheduledExecutorService executor;
+
+
+    private final ConcurrentHashMap<Integer, Lock> customerLocks = new ConcurrentHashMap<>(); // locks for each customerId
 
     public SessionManager(long expiredMilliseconds) {
         this.expiredMilliseconds = expiredMilliseconds;
@@ -26,65 +31,78 @@ public class SessionManager {
         startPurgeTask();
     }
 
-    /**
-     * Generates a new session key.
-     *
-     * @return A unique session key.
-     */
-    public String getNewSession(Integer customerId) {
-        if(customerId == null){
+    public String getSession(Integer customerId) {
+        if (customerId == null) {
             throw new IllegalArgumentException("customerId should not be null");
         }
+
+        Lock lock = customerLocks.computeIfAbsent(customerId, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            String sessionKey = customIdIndex.get(customerId);
+            if (sessionKey != null) {
+                Session session = sessions.get(sessionKey);
+                if (session.isExpired()) {
+                    sessions.remove(sessionKey);
+                    customIdIndex.remove(session.getCustomerId());
+                } else {
+                    refreshSession(session);
+                    return sessionKey;
+                }
+
+            }
+
+            // Create new session if no valid session exists
+            return createNewSession(customerId);
+        } finally {
+            lock.unlock(); // Release the lock
+        }
+    }
+
+    private String createNewSession(int customerId) {
         String sessionKey = UUID.randomUUID().toString();
-        Session session = new Session(sessionKey, customerId , expiredMilliseconds);
+        Session session = new Session(sessionKey, customerId, expiredMilliseconds);
         sessions.put(sessionKey, session);
+        customIdIndex.put(customerId, sessionKey);
         return sessionKey;
     }
 
-    /**
-     * Accesses the session key, sliding the refresh time upon each access.
-     * Throws {@link SessionExpiredException} if the session key is expired.
-     *
-     */
     public Session accessSession(String sessionKey) {
-        if(sessionKey == null || sessionKey.isEmpty()){
-            throw new IllegalArgumentException("sessionKey should not be null");
+        if (sessionKey == null || sessionKey.isEmpty()) {
+            throw new IllegalArgumentException("sessionKey should not be null or empty");
         }
 
         Session session = sessions.get(sessionKey);
-        if (session == null) {
-            throw new SessionExpiredException();
-        }
-        if(session.isExpired()){
-            session.setDeleted(true);
+        if (session == null || session.isExpired()) {
+            removeExpiredSession(sessionKey);
             throw new SessionInvalidException();
         }
-        session.setLatestAccessTime(System.currentTimeMillis());
+
+        refreshSession(session);
         return session;
     }
 
-    /**
-     * Purges all expired sessions by iterating over each session and checking its expiration status.
-     */
-    public void purgeAllExpiredSession() {
-        sessions.forEach((key, session) -> {
-            if(session.isDeleted()){
-                sessions.remove(key);
-            }
-        });
+    public void removeExpiredSession(String sessionKey) {
+        Session session = sessions.get(sessionKey);
+        if (session != null && session.isExpired()) {
+            sessions.remove(sessionKey);
+            customIdIndex.remove(session.getCustomerId());
+        }
     }
 
-    /**
-     * Starts a scheduled task to purge all expired sessions at fixed intervals.
-     */
-    public void startPurgeTask() {
-        executor.scheduleAtFixedRate(this::purgeAllExpiredSession, expiredMilliseconds, expiredMilliseconds, TimeUnit.MILLISECONDS);
+    public void purgeAllExpiredSessions() {
+        sessions.forEach((key, session) -> removeExpiredSession(key));
     }
 
-    /**
-     * Shuts down the scheduler service when no longer needed.
-     */
+    private void startPurgeTask() {
+        executor.scheduleAtFixedRate(this::purgeAllExpiredSessions, expiredMilliseconds, expiredMilliseconds, TimeUnit.MILLISECONDS);
+    }
+
     public void shutdownPurgeTask() {
         executor.shutdown();
+    }
+
+    private void refreshSession(Session session) {
+        session.setLatestAccessTime(System.currentTimeMillis());
     }
 }

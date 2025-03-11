@@ -5,7 +5,6 @@ import com.everymatrix.annotation.RequestBody;
 import com.everymatrix.annotation.RequestParam;
 import com.everymatrix.annotation.Route;
 import com.everymatrix.converter.IntegerParser;
-import com.everymatrix.converter.LongParser;
 import com.everymatrix.model.HttpMethod;
 import com.everymatrix.model.Session;
 import com.everymatrix.model.StakeEntry;
@@ -28,7 +27,7 @@ public class MainController {
 
     @Route(path = "/{customerId}/session")
     public String getSession(@PathVariable(value = "customerId", converter = IntegerParser.class) Integer customerId) {
-        return sessionManager.getNewSession(customerId);
+        return sessionManager.getSession(customerId);
     }
 
     @Route(method = HttpMethod.POST, path = "/{betOfferId}/stake")

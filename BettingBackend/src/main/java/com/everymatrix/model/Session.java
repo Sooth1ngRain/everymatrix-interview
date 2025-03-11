@@ -7,9 +7,6 @@ public class Session {
     private final int customerId;
     private final long expiredMilliseconds;
     private long latestAccessTime;
-
-    private boolean deleted = false;
-
     public Session(String sessionKey, int customerId, long expiredMilliseconds) {
         this.sessionKey = sessionKey;
         this.customerId = customerId;
@@ -35,13 +32,5 @@ public class Session {
 
     public long getLatestAccessTime() {
         return latestAccessTime;
-    }
-
-    public void setDeleted(boolean deleted) {
-        this.deleted = deleted;
-    }
-
-    public boolean isDeleted() {
-        return deleted;
     }
 }
