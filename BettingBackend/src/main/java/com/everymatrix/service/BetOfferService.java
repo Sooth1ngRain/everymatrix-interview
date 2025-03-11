@@ -5,6 +5,7 @@ import com.everymatrix.model.StakeEntry;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class BetOfferService {
@@ -18,21 +19,19 @@ public class BetOfferService {
 
     /**
      * Caches the top 20 stakes (de-duplicated by user) for fast retrieval.
-     * Key: betOfferId, Value: TreeSet of customerId-stake pairs, ordered by stake descending.
+     * Key: betOfferId, Value: ConcurrentSkipListSet of customerId-stake pairs, ordered by stake descending.
      */
-    private final Map<Integer, TreeSet<StakeEntry>> highStakesCache = new ConcurrentHashMap<>();
+    private final Map<Integer, ConcurrentSkipListSet<StakeEntry>> highStakesCache = new ConcurrentHashMap<>();
 
     /**
      * Caches Lock objects to avoid the overhead of creating them repeatedly.
      */
     private final ConcurrentHashMap<Integer, ReentrantLock> customerLocks = new ConcurrentHashMap<>(10000);
-    private final ConcurrentHashMap<Integer, ReentrantLock> offerLocks = new ConcurrentHashMap<>(1000);
 
     /**
      * Places a stake for a given bet offer and customer.
      * 1. Adds stake (O(log n) for TreeSet insertion), locks by customerId.
      * 2. Updates highStakesCache if stake is the user's maximum in the offer (locks by betOfferId).
-     *
      */
     public void placeStake(Integer betOfferId, Integer customerId, Integer stake) {
         if(betOfferId == null || customerId == null || stake == null ){
@@ -75,23 +74,15 @@ public class BetOfferService {
      * Update high stakes list cache
      */
     private void updateMaxStakesByOffer(int betOfferId, int customerId, int stake) {
-        offerLocks.putIfAbsent(betOfferId, new ReentrantLock());
-        ReentrantLock offerLock = offerLocks.get(betOfferId);
+        highStakesCache.putIfAbsent(betOfferId, new ConcurrentSkipListSet<>());
+        ConcurrentSkipListSet<StakeEntry> maxStakes = highStakesCache.get(betOfferId);
 
-        offerLock.lock();
-        try {
-            highStakesCache.putIfAbsent(betOfferId, new TreeSet<>());
-            TreeSet<StakeEntry> maxStakes = highStakesCache.get(betOfferId);
+        maxStakes.stream().filter(e -> e.getCustomerId() == customerId).findFirst().ifPresent(maxStakes::remove);
 
-            maxStakes.stream().filter(e -> e.getCustomerId() == customerId).findFirst().ifPresent(maxStakes::remove);
+        maxStakes.add(new StakeEntry(customerId, stake)); // O(log n)
 
-            maxStakes.add(new StakeEntry(customerId, stake)); // O(log n)
-
-            if (maxStakes.size() > AppConfig.highStakesSizeForBetOffer) {
-                maxStakes.pollLast(); // O(log n) to remove smallest
-            }
-        } finally {
-            offerLock.unlock();
+        if (maxStakes.size() > AppConfig.highStakesSizeForBetOffer) {
+            maxStakes.pollLast(); // O(log n) to remove smallest
         }
     }
 
@@ -102,10 +93,10 @@ public class BetOfferService {
      * @return Stakes in descending order
      */
     public List<StakeEntry> queryStakes(Integer betOfferId) {
-        if(betOfferId == null){
+        if (betOfferId == null) {
             throw new IllegalArgumentException("queryStakes.betOfferId should not be null");
         }
-        TreeSet<StakeEntry> maxStakes = highStakesCache.getOrDefault(betOfferId, new TreeSet<>());
+        ConcurrentSkipListSet<StakeEntry> maxStakes = highStakesCache.getOrDefault(betOfferId, new ConcurrentSkipListSet<>());
         return new ArrayList<>(maxStakes);
     }
 }

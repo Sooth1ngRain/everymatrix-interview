@@ -9,6 +9,8 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -73,12 +75,16 @@ public class BetOfferServiceTest {
     @Test
     public void testConcurrentPlaceStake() throws InterruptedException {
         Integer betOfferId = 1;
-        int numberOfThreads = 100;
+        int numberOfThreads = 1000;
         ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
         CountDownLatch latch = new CountDownLatch(numberOfThreads);
 
+        // Create an array of indices and shuffle them
+        List<Integer> indices = IntStream.range(0, numberOfThreads).boxed().collect(Collectors.toList());
+        Collections.shuffle(indices);
+
         for (int i = 0; i < numberOfThreads; i++) {
-            final int threadIndex = i;
+            final int threadIndex = indices.get(i);
             executorService.submit(() -> {
                 try {
                     Integer customerId = threadIndex;
@@ -95,9 +101,16 @@ public class BetOfferServiceTest {
 
         List<StakeEntry> topStakes = betOfferService.queryStakes(betOfferId);
 
+        // Assert that there are 20 stakes
         assertEquals(20, topStakes.size());
 
-        StakeEntry maxEntry = topStakes.get(0);
-        assertEquals(100 * numberOfThreads, maxEntry.getStake());
+        // Sort the stakes list in descending order based on the stake amount
+        Collections.sort(topStakes, Comparator.comparingInt(StakeEntry::getStake).reversed());
+
+        // Verify that the top stakes are the largest 20 stakes
+        for (int i = 0; i < 20; i++) {
+            int expectedStake = 100 * (numberOfThreads - i);
+            assertEquals(expectedStake, topStakes.get(i).getStake());
+        }
     }
 }
