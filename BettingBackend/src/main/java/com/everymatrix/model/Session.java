@@ -5,12 +5,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class Session {
     private final String sessionKey;
     private final int customerId;
-    private final long expiredMilliseconds;
     private long latestAccessTime;
-    public Session(String sessionKey, int customerId, long expiredMilliseconds) {
+    public Session(String sessionKey, int customerId) {
         this.sessionKey = sessionKey;
         this.customerId = customerId;
-        this.expiredMilliseconds = expiredMilliseconds;
         this.latestAccessTime = System.currentTimeMillis();
     }
 
@@ -20,10 +18,6 @@ public class Session {
 
     public int getCustomerId() {
         return customerId;
-    }
-
-    public boolean isExpired() {
-        return (System.currentTimeMillis() - this.latestAccessTime) > this.expiredMilliseconds;
     }
 
     public void setLatestAccessTime(long latestAccessTime) {
