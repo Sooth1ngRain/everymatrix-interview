@@ -3,22 +3,19 @@ package com.everymatrix.service;
 import com.everymatrix.config.AppConfig;
 import com.everymatrix.model.StakeEntry;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class BetOfferService {
 
     /**
-     * Simulates a row-based storage structure in a database to quickly determine
-     * if a user's current bet is their highest bet within a bet offer.
-     * Outer key: customerId , Inner key: betOfferId, Inner value: TreeSet of stakes.
-     */
-    private final Map<Integer, Map<Integer, TreeSet<Integer>>> bets = new ConcurrentHashMap<>();
-
-    /**
-     * Caches the top 20 stakes (de-duplicated by user) for fast retrieval.
+     * Caches the top 20 + 1 stakes (de-duplicated by user) for fast retrieval.
      * Key: betOfferId, Value: ConcurrentSkipListSet of customerId-stake pairs, ordered by stake descending.
      */
     private final Map<Integer, ConcurrentSkipListSet<StakeEntry>> highStakesCache = new ConcurrentHashMap<>();
@@ -26,7 +23,7 @@ public class BetOfferService {
     /**
      * Caches Lock objects to avoid the overhead of creating them repeatedly.
      */
-    private final ConcurrentHashMap<Integer, ReentrantLock> customerLocks = new ConcurrentHashMap<>(10000);
+    private final Map<Integer, ReentrantLock> customerLocks = new ConcurrentHashMap<>(10000);
 
     /**
      * Places a stake for a given bet offer and customer.
@@ -37,53 +34,31 @@ public class BetOfferService {
         if(betOfferId == null || customerId == null || stake == null ){
             throw new IllegalArgumentException("placeStake args should not be null");
         }
-        customerLocks.putIfAbsent(customerId, new ReentrantLock());
-        ReentrantLock customerLock = customerLocks.get(customerId);
+        highStakesCache.putIfAbsent(betOfferId, new ConcurrentSkipListSet<>());
+        ConcurrentSkipListSet<StakeEntry> maxStakes = highStakesCache.get(betOfferId);
 
+        ReentrantLock customerLock = customerLocks.computeIfAbsent(customerId, key -> new ReentrantLock());
         customerLock.lock();
         try {
-            bets.putIfAbsent(customerId, new ConcurrentHashMap<>());
-            Map<Integer, TreeSet<Integer>> betOfferBets = bets.get(customerId);
-
-            betOfferBets.putIfAbsent(betOfferId, new TreeSet<>());
-            TreeSet<Integer> stakes = betOfferBets.get(betOfferId);
-
-            stakes.add(stake);
-
-            Integer maxStake = stakes.last();
-
-            if (stake.equals(maxStake)) {
-                updateMaxStakesByOffer(betOfferId, customerId, stake);
+            Optional<StakeEntry> optional = maxStakes.stream().filter(e -> e.getCustomerId() == customerId).findFirst();
+            // remove the cached customer stake if customer's newly placed stake is higher
+            if(optional.isPresent()){
+                StakeEntry cachedStake = optional.get();
+                if(cachedStake.getStake() < stake){
+                    maxStakes.remove(cachedStake);
+                } else {
+                    return;
+                }
+            }
+            maxStakes.add(new StakeEntry(customerId, stake));
+            // +1 can ensure remove stakes without falling below AppConfig.highStakesSizeForBetOffer
+            if (maxStakes.size() > AppConfig.highStakesSizeForBetOffer + 1) {
+                maxStakes.pollLast(); // O(log n) to remove smallest
             }
         } finally {
             customerLock.unlock();
         }
-    }
 
-    /**
-     * Retrieves the stakes for a given customer.
-     * This method is only for testing place stake
-     *
-     * @return A map of bet offers and their corresponding stakes.
-     */
-    public Map<Integer, TreeSet<Integer>> queryBetOfferStakes(int customerId) {
-        return bets.getOrDefault(customerId, Collections.emptyMap());
-    }
-
-    /**
-     * Update high stakes list cache
-     */
-    private void updateMaxStakesByOffer(int betOfferId, int customerId, int stake) {
-        highStakesCache.putIfAbsent(betOfferId, new ConcurrentSkipListSet<>());
-        ConcurrentSkipListSet<StakeEntry> maxStakes = highStakesCache.get(betOfferId);
-
-        maxStakes.stream().filter(e -> e.getCustomerId() == customerId).findFirst().ifPresent(maxStakes::remove);
-
-        maxStakes.add(new StakeEntry(customerId, stake)); // O(log n)
-
-        if (maxStakes.size() > AppConfig.highStakesSizeForBetOffer) {
-            maxStakes.pollLast(); // O(log n) to remove smallest
-        }
     }
 
     /**
@@ -97,6 +72,6 @@ public class BetOfferService {
             throw new IllegalArgumentException("queryStakes.betOfferId should not be null");
         }
         ConcurrentSkipListSet<StakeEntry> maxStakes = highStakesCache.getOrDefault(betOfferId, new ConcurrentSkipListSet<>());
-        return new ArrayList<>(maxStakes);
+        return maxStakes.stream().limit(AppConfig.highStakesSizeForBetOffer).collect(Collectors.toList());
     }
 }

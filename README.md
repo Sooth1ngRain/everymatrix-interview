@@ -36,8 +36,7 @@ Provide a sliding-refresh session manager
 - Session expire strategy: lazy expire + schedule delete
 - Session field: sessionKey , customerId, latestAccessTime(If latestAccessTime + config[timeout] <
   currentTime then session expired)
-- data structure: ConcurrentHashMap<sessionKey , SessionObject> for session store , and ConcurrentHashMap<customerId, sessionKey> for index by customerId
-- When getSession ,use ReentrantLock to ensure threadsafe in case of multiple thread on one customer returns different sessionkey
+- data structure: ConcurrentHashMap<sessionKey , SessionObject> for session store
 
 ### Configuration Options
 
@@ -49,22 +48,18 @@ com.everymatrix.service.SessionManager
 
 ## Bet-Offer Service
 
-Persist Bet-Offer in memory with thread-safe code, and provide o(1) time-complexity query  via caching.
+Persist top N stakes of Bet-Offer in memory with thread-safe code, and provide o(1) time-complexity query  
 
 ### Post stake solution
 
 - Function define: void placeStake(betofferId , stake, customerId),
-- Use Map<Long, Map<Long, TreeSet<Integer>>> where the outer key is customerId, the inner key is betOfferId, and the
-  inner value is a TreeSet of stakes. The TreeSet enables efficient, ordered stake insertion.
 - When a stake is added, TreeSet quickly identified as if it is the highest by the customer, if it is ,trigger an action
   to update the **HighStakeCache**.
 - Use customerId to lock the procedure and guarantee thread-safe
 
 ### Query high stake with HighStakeCache
-
-- Data structure: Map<Long, ConcurrentSkipListSet<StakeEntry>>  Key: betOfferId, Value: ConcurrentSkipListSet of customerId-stake pairs
-- Upon posting a stake that triggers cache updates, insert the stake into ConcurrentSkipListSet<StakeEntry> and pop the minimal stake if the customer-stake pair is not already in the cache, if it exists, update the StakeEntry.
-- In production ,this design should consider consistency after a long run, which is not implemented in this project.
+- ConcurrentHashMap<Integer, ConcurrentSkipListSet<StakeEntry>> Key: betOfferId,Value: stake-customer pair. Store the top 20 stakes distinct by customer
+- Insert the stake into TreeSet<StakeEntry> and pop the minimal stake if the customer-stake pair is not already in the cache, if it exists, keep the higher stake and remove the other .
 
 
 ### Implement Class
@@ -77,4 +72,6 @@ com.everymatrix.service.BetOfferService
 
 script: ./Test Plan.jmx
 ## Test Result
-![img_1.png](img_1.png)
+![img.png](img.png)
+
+
